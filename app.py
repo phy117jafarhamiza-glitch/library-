@@ -41,7 +41,7 @@ if page == "الواجهة العامة":
     if df_filtered.empty:
         st.info("لا توجد كتب في هذا التصنيف حالياً.")
     else:
-        # عرض الجدول مع جعل الروابط قابلة للضغط
+        # عرض الجدول للزوار
         st.dataframe(
             df_filtered,
             column_config={
@@ -76,25 +76,26 @@ elif page == "لوحة الإدارة (للمشرفين)":
                 st.error("اسم المستخدم أو كلمة المرور غير صحيحة!")
                 
     else:
-        st.success("مرحباً بك! يمكنك الآن إضافة بيانات الكتاب ورابطه.")
+        st.success("مرحباً بك! يمكنك الآن إدارة المكتبة بالكامل.")
         if st.button("تسجيل الخروج"):
             st.session_state["admin_logged_in"] = False
             st.rerun()
             
         st.markdown("---")
+        
+        # --- قسم إضافة كتاب جديد ---
         st.subheader("📥 إضافة كتاب جديد")
         
-        with st.form("add_book_form"):
+        with st.form("add_book_form", clear_on_submit=True):
             book_title = st.text_input("اسم الكتاب *")
             book_author = st.text_input("اسم المؤلف *")
             book_category = st.selectbox("تصنيف الكتاب *", CATEGORIES)
             book_link = st.text_input("رابط الكتاب من Google Drive *", placeholder="https://drive.google.com/...")
             
-            submit_button = st.form_submit_button("حفظ بيانات الكتاب")
+            submit_button = st.form_submit_button("إضافة الكتاب")
             
             if submit_button:
                 if book_title and book_author and book_link:
-                    # حفظ البيانات الجديدة في ملف CSV
                     new_book = pd.DataFrame({
                         "اسم الكتاب": [book_title],
                         "المؤلف": [book_author],
@@ -103,5 +104,29 @@ elif page == "لوحة الإدارة (للمشرفين)":
                     })
                     new_book.to_csv(DB_FILE, mode='a', header=False, index=False)
                     st.success(f"تمت إضافة كتاب '{book_title}' بنجاح!")
+                    st.rerun()
                 else:
                     st.warning("يرجى تعبئة جميع الحقول المطلوبة.")
+                    
+        st.markdown("---")
+        
+        # --- قسم تعديل وحذف الكتب المضافة ---
+        st.subheader("✏️ إدارة وتعديل الكتب (تعديل / حذف)")
+        st.info("💡 للتعديل: انقر مرتين على أي خلية في الجدول. للحذف: حدد المربع بجانب اسم الكتاب واضغط على أيقونة سلة المهملات أعلى الجدول.")
+        
+        # قراءة البيانات الحالية
+        df_to_edit = pd.read_csv(DB_FILE)
+        
+        # عرض البيانات في جدول قابل للتحرير
+        edited_df = st.data_editor(
+            df_to_edit,
+            num_rows="dynamic", # يسمح بإضافة وحذف الصفوف
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # زر حفظ التعديلات
+        if st.button("💾 حفظ التعديلات على المكتبة"):
+            edited_df.to_csv(DB_FILE, index=False)
+            st.success("تم حفظ جميع التعديلات بنجاح! سيراها الزوار الآن.")
+            st.rerun()
